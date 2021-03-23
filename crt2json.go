@@ -86,13 +86,13 @@ func printCert(c *x509.Certificate) {
 	e := json.NewEncoder(os.Stdout)
 	e.SetIndent("", "   ")
 	err := e.Encode(map[string]interface{}{
-		"not_before":    c.NotBefore,
-		"not_after":     c.NotAfter,
-		"version":       c.Version,
-		"serial_number": fmt.Sprintf("%036x", c.SerialNumber),
-		//	"issuer":        c.Issuer,
-		"common_name": c.Subject.CommonName,
-		"dns_names":   c.DNSNames,
+		"not_before":          c.NotBefore,
+		"not_after":           c.NotAfter,
+		"version":             c.Version,
+		"serial_number":       fmt.Sprintf("%036x", c.SerialNumber),
+		"issuer_organization": c.Issuer.Organization,
+		"common_name":         c.Subject.CommonName,
+		"dns_names":           c.DNSNames,
 	})
 	if err != nil {
 		fmt.Println(err)
