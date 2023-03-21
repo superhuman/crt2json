@@ -8,23 +8,22 @@ that you want.
 ### Installation
 
 ```
-go install github.com/superhuman/crt2json
+go install github.com/superhuman/crt2json@latest
 ```
 
 ### Usage
 
-To decode a local certificate
-
 ```
-crt2json <a.crt
-```
+Usage: crt2json  [-sni HOSTNAME] [ SERVER | FILENAME ]
 
-To print certificate information for a website:
+Prints out a JSON summary of an SSL certificate.
 
-```
-crt2json https://mail.superhuman.com
+If the argument exists on disk then the file is assumed to be a certificate file, otherwise
+it is interpreted as a URL or a hostname to connect to.
+  -sni string
+    	server name indication to instruct the server to return the correct certificate
 ```
 
 ### TODO
 
-Right now it only prints out the information I needed for my use-case. It would be nice to support more use-cases.
+Right now it only prints out the information I needed for my use-cases. It would be nice to support more use-cases.

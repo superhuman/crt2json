@@ -5,42 +5,68 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/url"
 	"os"
+	"strings"
 )
 
 func main() {
-	if len(os.Args) <= 1 {
-		decodeFromStdin()
+
+	var sni string
+
+	flag.StringVar(&sni, "sni", "", "server name indication to instruct the server to return the correct certificate")
+
+	flag.Usage = func() {
+		fmt.Println(`Usage: crt2json [ -sni HOSTNAME ] [ SERVER | FILENAME ]
+
+Prints out a JSON summary of an SSL certificate.
+
+If the argument exists on disk then the file is assumed to be a certificate file, otherwise
+it is interpreted as a URL or a hostname to connect to.`)
+
+		flag.PrintDefaults()
+	}
+
+	flag.Parse()
+	// nonsense
+	if len(flag.Args()) == 3 && flag.Args()[1] == "-sni" {
+		flag.Set("sni", flag.Args()[2])
+	} else if len(flag.Args()) != 1 {
+		flag.Usage()
 		return
 	}
 
-	if os.Args[1] == "-h" || os.Args[1] == "--help" {
-		fmt.Println("Usage: crt2json https://superhuman.com\n" +
-			"       crt2json < superhuman.crt\n" +
-			"\n" +
-			"Prints out a JSON summary of an SSL certificate.\n" +
-			"If an argument is passed it is assumed to be a server to connect to, if not STDIN is scanned for any certificates")
-
-		os.Exit(1)
+	arg := flag.Args()[0]
+	if _, err := os.Stat(arg); err == nil {
+		decodeFile(arg)
+		return
 	}
 
-	u, err := url.Parse(os.Args[1])
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	toDial := arg
+	if strings.Contains(arg, "//") {
+		u, err := url.Parse(arg)
 
-	toDial := u.Hostname() + ":443"
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
 
-	if toDial == ":443" {
-		toDial = u.RawPath + ":443"
+		toDial = u.Hostname() + ":443"
+
+		if toDial == ":443" {
+			toDial = u.RawPath + ":443"
+		}
+
+	} else if !strings.Contains(arg, ":") {
+		toDial += ":443"
 	}
 
 	c, err := tls.Dial("tcp", toDial, &tls.Config{
 		InsecureSkipVerify: true,
+		ServerName:         sni,
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -51,9 +77,8 @@ func main() {
 
 }
 
-func decodeFromStdin() {
-
-	bytes, err := ioutil.ReadAll(os.Stdin)
+func decodeFile(name string) {
+	bytes, err := ioutil.ReadFile(name)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -76,13 +101,10 @@ func decodeFromStdin() {
 		for _, c := range certs {
 			printCert(c)
 		}
-
 	}
-
 }
 
 func printCert(c *x509.Certificate) {
-
 	e := json.NewEncoder(os.Stdout)
 	e.SetIndent("", "   ")
 	err := e.Encode(map[string]interface{}{
@@ -94,6 +116,7 @@ func printCert(c *x509.Certificate) {
 		"common_name":         c.Subject.CommonName,
 		"dns_names":           c.DNSNames,
 	})
+
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
